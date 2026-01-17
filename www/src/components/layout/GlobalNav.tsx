@@ -63,6 +63,20 @@ export function GlobalNav() {
         >
           {React.cloneElement(<Settings2 />, { size: 26, strokeWidth: 2.5 })}
         </button>
+
+        <button
+          className={cn(
+              "nav-item mt-2",
+              useAppStore.getState().showHelp 
+                ? "active text-purple-400 bg-purple-500/10" 
+                : "text-text-muted hover:text-purple-400"
+          )}
+          onClick={() => useAppStore.getState().setShowHelp(true)}
+          title="Help Center"
+        >
+           {/* @ts-ignore */}
+           <div className="border-2 border-current rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs">?</div>
+        </button>
       </div>
 
       <div className="flex flex-col gap-3 items-center">

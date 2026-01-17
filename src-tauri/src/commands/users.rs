@@ -125,3 +125,83 @@ pub async fn flush_privileges(state: State<'_, AppState>) -> Result<(), String> 
     let mut conn = pool.get_conn().await.map_err(|e| e.to_string())?;
     conn.query_drop("FLUSH PRIVILEGES").await.map_err(|e| e.to_string())
 }
+#[derive(Serialize)]
+pub struct PrivilegeMatrix {
+    pub global: Vec<String>,
+    pub databases: Vec<(String, Vec<String>)>, // (DB, Privileges)
+}
+
+#[tauri::command]
+pub async fn get_privilege_matrix(name: String, host: String, state: State<'_, AppState>) -> Result<PrivilegeMatrix, String> {
+    let grants = get_grants(name, host, state).await?;
+    
+    let mut matrix = PrivilegeMatrix {
+        global: Vec::new(),
+        databases: Vec::new(),
+    };
+
+    for grant in grants {
+        // Very basic parsing: GRANT <privs> ON <level> TO ...
+        if let Some(on_start) = grant.find(" ON ") {
+            let privs_part = &grant[6..on_start]; // Skip "GRANT "
+            let rest = &grant[on_start + 4..];
+            
+            if let Some(to_start) = rest.find(" TO ") {
+                let level_part = &rest[..to_start];
+                
+                let priv_list: Vec<String> = privs_part.split(", ").map(|s| s.to_string()).collect();
+                
+                if level_part == "*.*" {
+                    matrix.global.extend(priv_list);
+                } else if level_part.contains(".*") {
+                    let db = level_part.replace(".*", "").replace("`", "");
+                    matrix.databases.push((db, priv_list));
+                }
+            }
+        }
+    }
+    
+    Ok(matrix)
+}
+
+#[tauri::command]
+pub async fn update_privilege(
+    name: String, 
+    host: String, 
+    privilege: String, 
+    level: String, 
+    is_grant: bool, 
+    state: State<'_, AppState>
+) -> Result<(), String> {
+    let pool = {
+        let pool_guard = state.pool.lock().unwrap();
+        pool_guard.as_ref().cloned().ok_or("Not connected")?
+    };
+    let mut conn = pool.get_conn().await.map_err(|e| e.to_string())?;
+
+    let sql = if is_grant {
+        format!("GRANT {} ON {} TO '{}'@'{}'", privilege, level, name, host)
+    } else {
+        format!("REVOKE {} ON {} FROM '{}'@'{}'", privilege, level, name, host)
+    };
+
+    conn.query_drop(sql).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn rename_user(
+    old_name: String,
+    old_host: String,
+    new_name: String,
+    new_host: String,
+    state: State<'_, AppState>
+) -> Result<(), String> {
+    let pool = {
+        let pool_guard = state.pool.lock().unwrap();
+        pool_guard.as_ref().cloned().ok_or("Not connected")?
+    };
+    let mut conn = pool.get_conn().await.map_err(|e| e.to_string())?;
+
+    let sql = format!("RENAME USER '{}'@'{}' TO '{}'@'{}'", old_name, old_host, new_name, new_host);
+    conn.query_drop(sql).await.map_err(|e| e.to_string())
+}

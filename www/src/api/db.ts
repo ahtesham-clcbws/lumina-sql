@@ -33,6 +33,10 @@ export const dbApi = {
     getTables: async (db: string) => {
         return safeInvoke('get_tables', { db });
     },
+    // Table Data
+    getColumns: async (db: string, table: string) => {
+        return safeInvoke('get_columns', { db, table });
+    },
 
     browseTable: async (db: string, table: string, page: number, limit: number) => {
         return safeInvoke('browse_table_html', { db, table, page, limit });
@@ -60,6 +64,10 @@ export const dbApi = {
 
     getServerVariables: async (filter?: string) => {
         return safeInvoke('get_server_variables', { filter });
+    },
+
+    getMonitorData: async () => {
+        return safeInvoke('get_monitor_data');
     },
 
     getRelations: async (db: string) => {
@@ -153,8 +161,20 @@ export const dbApi = {
         return safeInvoke('drop_user', { name, host });
     },
 
+    renameUser: async (oldName: string, oldHost: string, newName: string, newHost: string) => {
+        return safeInvoke('rename_user', { oldName, oldHost, newName, newHost });
+    },
+
     getGrants: async (name: string, host: string) => {
         return safeInvoke('get_grants', { name, host });
+    },
+
+    getPrivilegeMatrix: async (name: string, host: string) => {
+        return safeInvoke('get_privilege_matrix', { name, host });
+    },
+
+    updatePrivilege: async (name: string, host: string, privilege: string, level: string, isGrant: boolean) => {
+        return safeInvoke('update_privilege', { name, host, privilege, level, isGrant });
     },
 
     changePassword: async (name: string, host: string, pass: string) => {
@@ -163,5 +183,73 @@ export const dbApi = {
 
     flushPrivileges: async () => {
         return safeInvoke('flush_privileges');
+    },
+
+    // Import/Export
+    exportDatabase: async (db: string, file: string, options: import('./commands').ExportOptions) => {
+        return safeInvoke('export_database', { db, file, options });
+    },
+
+    importDatabase: async (db: string, file: string) => {
+        return safeInvoke('import_database', { db, file });
+    },
+
+    importSql: async (db: string, sql: string) => {
+        return safeInvoke('import_sql', { db, sql });
+    },
+
+    getCsvPreview: async (filePath: string, delimiter: string) => {
+        return safeInvoke('get_csv_preview', { filePath, delimiter });
+    },
+
+    importCsv: async (db: string, table: string, filePath: string, options: any) => {
+        return safeInvoke('import_csv', { db, table, filePath, options });
+    },
+
+    // Routines
+    getRoutines: async (db: string) => {
+        return safeInvoke('get_routines', { db });
+    },
+
+    getRoutineDefinition: async (db: string, name: string, type: 'PROCEDURE' | 'FUNCTION') => {
+        return safeInvoke('get_routine_definition', { db, name, routineType: type });
+    },
+
+    saveRoutine: async (db: string, oldName: string, type: 'PROCEDURE' | 'FUNCTION', sql: string) => {
+        return safeInvoke('save_routine', { db, oldName, routineType: type, sql });
+    },
+
+    dropRoutine: async (db: string, name: string, type: 'PROCEDURE' | 'FUNCTION') => {
+        return safeInvoke('drop_routine', { db, name, routineType: type });
+    },
+
+    // Search
+    globalSearch: async (term: string, db?: string) => {
+        return safeInvoke('global_search', { term, db });
+    },
+
+    // Snippets
+    getSnippets: async () => {
+        return safeInvoke('get_snippets');
+    },
+    saveSnippet: async (snippet: any) => {
+        return safeInvoke('save_snippet', { snippet });
+    },
+    deleteSnippet: async (id: string) => {
+        return safeInvoke('delete_snippet', { id });
+    },
+
+    // AI
+    getAIConfig: async () => {
+        return safeInvoke('get_ai_config');
+    },
+    saveAIConfig: async (config: any) => {
+        return safeInvoke('save_ai_config', { config });
+    },
+    generateSQL: async (prompt: string, schema_context: string) => {
+        return safeInvoke('generate_sql', { prompt, schema_context });
+    },
+    explainQuery: async (sql: string) => {
+        return safeInvoke('explain_query', { sql });
     }
 };

@@ -1,9 +1,35 @@
 use tauri::State;
 use crate::state::AppState;
 use mysql_async::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+#[derive(Serialize)]
+pub struct CsvPreview {
+    pub headers: Vec<String>,
+    pub rows: Vec<Vec<String>>,
+}
+
+#[derive(Deserialize)]
+pub struct CsvImportOptions {
+    pub delimiter: String,
+    pub skip_header: bool,
+    pub mapping: HashMap<String, String>, // CSV Column -> DB Column
+}
+
+#[derive(Deserialize)]
+pub struct ExportOptions {
+    pub tables: Option<Vec<String>>,
+    pub export_structure: bool,
+    pub export_data: bool,
+    pub add_drop_table: bool,
+    pub add_create_table: bool,
+    pub add_if_not_exists: bool,
+    pub data_insertion_mode: String, // "INSERT", "INSERT IGNORE", "REPLACE"
+}
 
 #[tauri::command]
-pub async fn export_database(db: String, file_path: String, with_data: bool, with_drop: bool, state: State<'_, AppState>) -> Result<(), String> {
+pub async fn export_database(db: String, file_path: String, options: ExportOptions, state: State<'_, AppState>) -> Result<(), String> {
     use tokio::io::AsyncWriteExt;
     
     let pool = {
@@ -26,29 +52,49 @@ pub async fn export_database(db: String, file_path: String, with_data: bool, wit
     file.write_all("/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;\n".as_bytes()).await.map_err(|e| e.to_string())?;
     file.write_all("/*!40101 SET NAMES utf8mb4 */;\n\n".as_bytes()).await.map_err(|e| e.to_string())?;
 
-    let tables: Vec<String> = conn.query(format!("SHOW TABLES FROM `{}`", db)).await.map_err(|e| e.to_string())?;
+    let all_tables: Vec<String> = conn.query(format!("SHOW TABLES FROM `{}`", db)).await.map_err(|e| e.to_string())?;
+    
+    // Filter tables
+    let tables_to_export: Vec<String> = match &options.tables {
+        Some(selected) => all_tables.into_iter().filter(|t| selected.contains(t)).collect(),
+        None => all_tables,
+    };
 
-    for table in tables {
+    for table in tables_to_export {
         // 1. Structure
-        let create_res: Vec<(String, String)> = conn.query(format!("SHOW CREATE TABLE `{}`.`{}`", db, table))
-            .await.map_err(|e| e.to_string())?;
-        
-        if let Some((_, create_sql)) = create_res.first() {
-             file.write_all(format!("--\n-- Structure for table `{}`\n--\n\n", table).as_bytes()).await.map_err(|e| e.to_string())?;
-             if with_drop {
-                file.write_all(format!("DROP TABLE IF EXISTS `{}`;\n", table).as_bytes()).await.map_err(|e| e.to_string())?;
-             }
-             file.write_all(format!("{};\n\n", create_sql).as_bytes()).await.map_err(|e| e.to_string())?;
+        if options.export_structure {
+            let create_res: Vec<(String, String)> = conn.query(format!("SHOW CREATE TABLE `{}`.`{}`", db, table))
+                .await.map_err(|e| e.to_string())?;
+            
+            if let Some((_, mut create_sql)) = create_res.into_iter().next() {
+                 file.write_all(format!("--\n-- Structure for table `{}`\n--\n\n", table).as_bytes()).await.map_err(|e| e.to_string())?;
+                 
+                 if options.add_drop_table {
+                    file.write_all(format!("DROP TABLE IF EXISTS `{}`;\n", table).as_bytes()).await.map_err(|e| e.to_string())?;
+                 }
+
+                 if options.add_if_not_exists {
+                     create_sql = create_sql.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS");
+                 }
+                 
+                 file.write_all(format!("{};\n\n", create_sql).as_bytes()).await.map_err(|e| e.to_string())?;
+            }
         }
 
         // 2. Data
-        if with_data {
+        if options.export_data {
             file.write_all(format!("--\n-- Dumping data for table `{}`\n--\n\n", table).as_bytes()).await.map_err(|e| e.to_string())?;
             
             let rows: Vec<mysql_async::Row> = conn.query(format!("SELECT * FROM `{}`.`{}`", db, table)).await.map_err(|e| e.to_string())?;
             
             if !rows.is_empty() {
-                 file.write_all(format!("INSERT INTO `{}` VALUES \n", table).as_bytes()).await.map_err(|e| e.to_string())?;
+                 let insert_stmt = match options.data_insertion_mode.as_str() {
+                     "INSERT IGNORE" => "INSERT IGNORE INTO",
+                     "REPLACE" => "REPLACE INTO",
+                     _ => "INSERT INTO",
+                 };
+
+                 file.write_all(format!("{} `{}` VALUES \n", insert_stmt, table).as_bytes()).await.map_err(|e| e.to_string())?;
                  
                  for (i, row) in rows.iter().enumerate() {
                      let values: Vec<String> = (0..row.len()).map(|idx| {
@@ -241,4 +287,91 @@ pub async fn import_sql(db: String, sql: String, state: State<'_, AppState>) -> 
     }
     
     Ok(total)
+}
+
+#[tauri::command]
+pub async fn get_csv_preview(file_path: String, delimiter: String) -> Result<CsvPreview, String> {
+    let mut reader = csv::ReaderBuilder::new()
+        .delimiter(delimiter.as_bytes()[0])
+        .from_path(&file_path)
+        .map_err(|e| e.to_string())?;
+
+    let headers = reader.headers()
+        .map_err(|e| e.to_string())?
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
+    let mut rows = Vec::new();
+    for result in reader.records().take(5) {
+        let record = result.map_err(|e| e.to_string())?;
+        rows.push(record.iter().map(|s| s.to_string()).collect());
+    }
+
+    Ok(CsvPreview { headers, rows })
+}
+
+#[tauri::command]
+pub async fn import_csv(
+    db: String,
+    table: String,
+    file_path: String,
+    options: CsvImportOptions,
+    state: State<'_, AppState>
+) -> Result<usize, String> {
+    let pool = {
+        let pool_guard = state.pool.lock().unwrap();
+        pool_guard.as_ref().cloned().ok_or("Not connected")?
+    };
+    let mut conn = pool.get_conn().await.map_err(|e| e.to_string())?;
+
+    let mut reader = csv::ReaderBuilder::new()
+        .delimiter(options.delimiter.as_bytes()[0])
+        .has_headers(!options.skip_header)
+        .from_path(&file_path)
+        .map_err(|e| e.to_string())?;
+
+    let headers: Vec<String> = reader.headers()
+        .map_err(|e| e.to_string())?
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
+    // Prepare mapping: index in CSV -> DB column name
+    let mut col_map = Vec::new();
+    for (i, h) in headers.iter().enumerate() {
+        if let Some(db_col) = options.mapping.get(h) {
+            col_map.push((i, db_col.clone()));
+        }
+    }
+
+    if col_map.is_empty() {
+        return Err("No columns mapped for import".to_string());
+    }
+
+    let mut count = 0;
+    
+    // Use an atomic batch if possible, but let's do sequential for simplicity in MVP.
+    // For large files, we should use LOAD DATA LOCAL INFILE or a batched INSERT.
+    // Let's implement a batched INSERT for better performance.
+    
+    let db_cols: Vec<String> = col_map.iter().map(|(_, name)| format!("`{}`", name)).collect();
+    let col_list = db_cols.join(", ");
+    let placeholders = vec!["?"; col_map.len()].join(", ");
+    let sql = format!("INSERT INTO `{}`.`{}` ({}) VALUES ({})", db, table, col_list, placeholders);
+
+    for result in reader.records() {
+        let record = result.map_err(|e| e.to_string())?;
+        let mut params = Vec::new();
+        
+        for (idx, _) in &col_map {
+            let val = record.get(*idx).unwrap_or("");
+            params.push(mysql_async::Value::from(val));
+        }
+        
+        conn.exec_drop(&sql, params).await.map_err(|e| e.to_string())?;
+        count += 1;
+    }
+
+    Ok(count)
 }

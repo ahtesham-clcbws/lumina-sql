@@ -57,7 +57,7 @@ export function Structure() {
             return dbApi.runMaintenance(currentDb!, selectedTables, op);
         },
         onSuccess: (data, variables) => {
-             setMaintenanceResults({ op: variables, data: data as any[][] });
+             setMaintenanceResults({ op: variables, data: (data as any).rows });
              showToast(`${variables} operation completed`, 'success');
              setSelectedTables([]); 
              queryClient.invalidateQueries({ queryKey: ['tables', currentDb] });

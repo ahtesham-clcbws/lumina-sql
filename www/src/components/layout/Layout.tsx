@@ -1,5 +1,6 @@
 import { GlobalNav } from './GlobalNav';
 import { useAppStore } from '@/stores/useAppStore';
+import { HelpCenter } from '@/features/help/HelpCenter';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { view } = useAppStore();
@@ -13,6 +14,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <main className="flex-1 relative flex flex-col overflow-hidden bg-main">
          {children}
       </main>
+
+      {/* Global Modals */}
+      <HelpCenter />
     </div>
   );
 }

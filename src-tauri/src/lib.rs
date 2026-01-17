@@ -9,6 +9,7 @@ use state::AppState;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState {
             pool: Mutex::new(None),
         })
@@ -22,6 +23,10 @@ pub fn run() {
             commands::server::get_process_list,
             commands::server::get_status_variables,
             commands::server::get_server_variables,
+            commands::server::get_monitor_data,
+
+            // Search
+            commands::search::global_search,
 
             // Database
             commands::database::get_databases, 
@@ -45,7 +50,6 @@ pub fn run() {
             commands::table::truncate_table,
             commands::table::copy_table,
             commands::table::table_maintenance,
-            commands::table::global_search,
 
             // Query
             commands::server::get_saved_servers_local,
@@ -58,6 +62,8 @@ pub fn run() {
             commands::import_export::export_database,
             commands::import_export::import_database,
             commands::import_export::import_sql,
+            commands::import_export::get_csv_preview,
+            commands::import_export::import_csv,
 
             // Relations
             commands::relations::get_foreign_keys,
@@ -73,7 +79,10 @@ pub fn run() {
             commands::users::get_users,
             commands::users::create_user,
             commands::users::drop_user,
+            commands::users::rename_user,
             commands::users::get_grants,
+            commands::users::get_privilege_matrix,
+            commands::users::update_privilege,
             commands::users::change_password,
             commands::users::flush_privileges,
             
@@ -88,7 +97,23 @@ pub fn run() {
             // Routines
             commands::routines::get_routines,
             commands::routines::get_routine_definition,
-            commands::routines::drop_routine
+            commands::routines::save_routine,
+            commands::routines::drop_routine,
+
+            // Snippets
+            commands::snippets::get_snippets,
+            commands::snippets::save_snippet,
+            commands::snippets::save_snippet,
+            commands::snippets::delete_snippet,
+
+            // Preferences
+            commands::preferences::load_preferences,
+            commands::preferences::save_preferences,
+            // AI
+            commands::ai::get_ai_config,
+            commands::ai::save_ai_config,
+            commands::ai::generate_sql,
+            commands::ai::explain_query
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

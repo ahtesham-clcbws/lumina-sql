@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ReactFlow, Background, Controls, useNodesState, useEdgesState, BackgroundVariant, Node, Panel } from '@xyflow/react';
+import { ReactFlow, Background, Controls, useNodesState, useEdgesState, BackgroundVariant, Node, Edge, Panel } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useAppStore } from '@/stores/useAppStore';
 import { Loader2, Download } from 'lucide-react';
@@ -25,7 +25,7 @@ export function Designer() {
     
     // Nodes & Edges State
     const [nodes, setNodes, onNodesChange] = useNodesState<AppNode>([]);
-    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
     // 1. Data Fetching Hook
     const { tables, loadingTables, relations, loadedSchemas } = useDesignerData(currentDb);

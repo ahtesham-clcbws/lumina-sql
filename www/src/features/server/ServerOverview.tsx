@@ -1,4 +1,5 @@
 import React from 'react';
+import { ServerMonitor } from './ServerMonitor';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dbApi } from '@/api/db';
 import { useNavigate } from 'react-router-dom';

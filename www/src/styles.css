@@ -15,7 +15,9 @@
   
   /* Layout Colors */
   --color-main: var(--bg-main);
+  --color-secondary: var(--bg-secondary);
   --color-surface: var(--bg-surface);
+  --color-hover-bg: var(--hover-bg);
   --color-canvas: var(--bg-canvas);
   --color-border: var(--border-color);
   

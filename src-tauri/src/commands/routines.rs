@@ -79,3 +79,29 @@ pub async fn drop_routine(db: String, name: String, routine_type: String, state:
     let sql = format!("DROP {} `{}`.`{}`", routine_type, db, name);
     conn.query_drop(sql).await.map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn save_routine(
+    db: String,
+    old_name: String,
+    routine_type: String,
+    sql: String,
+    state: State<'_, AppState>
+) -> Result<(), String> {
+    let pool = {
+        let pool_guard = state.pool.lock().unwrap();
+        pool_guard.as_ref().cloned().ok_or("Not connected")?
+    };
+    let mut conn = pool.get_conn().await.map_err(|e| e.to_string())?;
+
+    // Start a transaction would be ideal, but for now we'll do it sequentially.
+    // Drop first if old_name exists
+    if !old_name.is_empty() {
+        let drop_sql = format!("DROP {} IF EXISTS `{}`.`{}`", routine_type, db, old_name);
+        conn.query_drop(drop_sql).await.map_err(|e| e.to_string())?;
+    }
+
+    // Execute the new CREATE statement
+    // Note: The SQL should be the full "CREATE PROCEDURE..." or "CREATE FUNCTION..."
+    conn.query_drop(sql).await.map_err(|e| e.to_string())
+}

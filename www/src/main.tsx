@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './styles.css'
 
-const isProd = import.meta.env.PROD;
+const isProd = (import.meta as any).env.PROD;
 
 if (isProd) {
     document.addEventListener('contextmenu', (e) => e.preventDefault());

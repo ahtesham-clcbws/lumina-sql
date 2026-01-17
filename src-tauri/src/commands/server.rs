@@ -276,3 +276,63 @@ pub async fn connect_db(config: crate::state::DbConfig, state: State<'_, AppStat
 
     Ok("Connected successfully".into())
 }
+
+#[derive(Serialize)]
+pub struct MonitorData {
+    pub time: i64,
+    pub questions: u64,
+    pub connections: u64,
+    pub threads_connected: u64,
+    pub threads_running: u64,
+    pub bytes_received: u64,
+    pub bytes_sent: u64,
+}
+
+#[tauri::command]
+pub async fn get_monitor_data(state: State<'_, AppState>) -> Result<MonitorData, String> {
+    let pool = {
+        let pool_guard = state.pool.lock().unwrap();
+        pool_guard.as_ref().cloned().ok_or("Not connected")?
+    };
+    let mut conn = pool.get_conn().await.map_err(|e| e.to_string())?;
+
+    // Fetch necessary variables in one query for consistency
+    let rows: Vec<mysql_async::Row> = conn.query("
+        SHOW GLOBAL STATUS WHERE Variable_name IN (
+            'Questions', 
+            'Connections', 
+            'Threads_connected', 
+            'Threads_running', 
+            'Bytes_received', 
+            'Bytes_sent'
+        )
+    ").await.map_err(|e| e.to_string())?;
+
+    let mut data = MonitorData {
+        time: chrono::Local::now().timestamp_millis(),
+        questions: 0,
+        connections: 0,
+        threads_connected: 0,
+        threads_running: 0,
+        bytes_received: 0,
+        bytes_sent: 0,
+    };
+
+    for row in rows {
+        let name: String = row.get(0).unwrap_or_default();
+        let value: String = row.get(1).unwrap_or_default();
+        let val_u64 = value.parse::<u64>().unwrap_or(0);
+
+        match name.as_str() {
+            "Questions" => data.questions = val_u64,
+            "Connections" => data.connections = val_u64,
+            "Threads_connected" => data.threads_connected = val_u64,
+            "Threads_running" => data.threads_running = val_u64,
+            "Bytes_received" => data.bytes_received = val_u64,
+            "Bytes_sent" => data.bytes_sent = val_u64,
+            _ => {}
+        }
+    }
+
+    Ok(data)
+}

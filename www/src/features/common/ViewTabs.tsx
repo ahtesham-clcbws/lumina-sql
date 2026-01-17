@@ -1,5 +1,5 @@
 import React from 'react';
-import { Table, LayoutGrid, FileCode, PenTool, FileText, Download } from 'lucide-react';
+import { Table, LayoutGrid, FileCode, PenTool, FileText, Download, Upload } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +15,7 @@ export function ViewTabs() {
         { id: 'routines', label: 'Routines', icon: FileText },
         { id: 'designer', label: 'Designer', icon: PenTool },
         { id: 'export', label: 'Export', icon: Download },
+        { id: 'import', label: 'Import', icon: Upload },
     ] as const;
 
     return (

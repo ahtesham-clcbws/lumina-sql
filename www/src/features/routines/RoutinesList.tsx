@@ -1,17 +1,15 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Code, Trash2, Play, FileCode, Plus } from 'lucide-react';
+import { Loader2, Code, Trash2, Play, FileCode } from 'lucide-react';
 import { dbApi } from '@/api/db';
 import { useAppStore } from '@/stores/useAppStore';
 import { showToast } from '@/utils/ui';
 import { cn } from '@/lib/utils';
 
-export function Routines() {
+export function RoutinesList() {
     const { currentDb } = useAppStore();
     const queryClient = useQueryClient();
     const [viewingRoutine, setViewingRoutine] = React.useState<{name: string, type: 'PROCEDURE' | 'FUNCTION'} | null>(null);
-    const [editedSql, setEditedSql] = React.useState<string>('');
-    const [isEditing, setIsEditing] = React.useState(false);
 
     const { data: routines, isLoading: loadingRoutines } = useQuery({
         queryKey: ['routines', currentDb],
@@ -21,23 +19,8 @@ export function Routines() {
 
     const { data: definition, isLoading: loadingDefinition } = useQuery({
         queryKey: ['routine-definition', currentDb, viewingRoutine?.name],
-        queryFn: async () => {
-            const def = await dbApi.getRoutineDefinition(currentDb!, viewingRoutine!.name, viewingRoutine!.type);
-            setEditedSql(def);
-            return def;
-        },
+        queryFn: () => dbApi.getRoutineDefinition(currentDb!, viewingRoutine!.name, viewingRoutine!.type),
         enabled: !!currentDb && !!viewingRoutine
-    });
-
-    const saveMutation = useMutation({
-        mutationFn: () => dbApi.saveRoutine(currentDb!, viewingRoutine?.name || '', viewingRoutine!.type, editedSql),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['routines', currentDb] });
-            showToast('Routine saved successfully');
-            setIsEditing(false);
-            setViewingRoutine(null);
-        },
-        onError: (err) => showToast('Failed to save routine: ' + err)
     });
 
     const dropMutation = useMutation({
@@ -49,12 +32,6 @@ export function Routines() {
         }
     });
 
-    const handleCreate = () => {
-        setViewingRoutine({ name: '', type: 'PROCEDURE' });
-        setEditedSql('CREATE PROCEDURE `new_procedure`()\nBEGIN\n\t-- Routine body\nEND');
-        setIsEditing(true);
-    };
-
     if (!currentDb) return <div className="p-8 text-center opacity-50">Select a database</div>;
 
     return (
@@ -64,9 +41,6 @@ export function Routines() {
                     <Code className="text-primary w-5 h-5" />
                     <h1 className="text-lg font-bold">Stored Routines</h1>
                 </div>
-                <button className="btn-secondary h-8 text-[11px]" onClick={handleCreate}>
-                    <Plus size={14} className="mr-1" /> Create Routine
-                </button>
             </div>
 
             <div className="flex-1 overflow-auto p-6 space-y-6">
@@ -99,12 +73,9 @@ export function Routines() {
                                     <td className="p-4 text-xs opacity-40">{r.created}</td>
                                     <td className="p-4 px-6 flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button 
-                                            onClick={() => {
-                                                setViewingRoutine({ name: r.name, type: r.routine_type as any });
-                                                setIsEditing(true);
-                                            }}
+                                            onClick={() => setViewingRoutine({ name: r.name, type: r.routine_type as any })}
                                             className="p-1.5 hover:bg-white/10 rounded-md text-primary" 
-                                            title="Edit Definition"
+                                            title="View Definition"
                                         >
                                             <FileCode size={16} />
                                         </button>
@@ -125,35 +96,20 @@ export function Routines() {
                     </table>
                 </div>
 
-                {isEditing && (
+                {viewingRoutine && (
                     <div className="glass-panel p-6 space-y-4 border-primary/20 bg-primary/[0.02]">
                         <div className="flex justify-between items-center">
                             <h2 className="text-sm font-bold flex items-center gap-2">
                                 <Code size={14} className="text-primary" />
-                                {viewingRoutine?.name ? `Editing ${viewingRoutine.type}: ${viewingRoutine.name}` : `Create New Routine`}
+                                {viewingRoutine.type}: <span className="text-primary">{viewingRoutine.name}</span>
                             </h2>
-                            <div className="flex gap-2">
-                                <button 
-                                    onClick={() => saveMutation.mutate()} 
-                                    className="btn-primary h-7 text-[10px]"
-                                    disabled={saveMutation.isPending}
-                                >
-                                    {saveMutation.isPending ? <Loader2 className="animate-spin w-3 h-3 mr-1"/> : null}
-                                    Save Routine
-                                </button>
-                                <button onClick={() => setIsEditing(false)} className="text-[10px] uppercase font-bold opacity-50 hover:opacity-100">Cancel</button>
-                            </div>
+                            <button onClick={() => setViewingRoutine(null)} className="text-[10px] uppercase font-bold opacity-50 hover:opacity-100">Close</button>
                         </div>
-                        <div className="bg-black/40 rounded-lg border border-white/5 p-0 font-mono text-sm overflow-hidden flex flex-col h-[500px]">
-                            {loadingDefinition && viewingRoutine?.name ? (
-                                <div className="p-8 flex items-center gap-2 opacity-40"><Loader2 className="animate-spin w-3 h-3"/> Fetching definition...</div>
+                        <div className="bg-black/40 rounded-lg border border-white/5 p-4 font-mono text-sm overflow-x-auto whitespace-pre custom-scrollbar max-h-96">
+                            {loadingDefinition ? (
+                                <div className="flex items-center gap-2 opacity-40"><Loader2 className="animate-spin w-3 h-3"/> Fetching definition...</div>
                             ) : (
-                                <textarea 
-                                    className="flex-1 bg-transparent p-4 outline-none resize-none text-white/80 custom-scrollbar"
-                                    value={editedSql}
-                                    onChange={(e) => setEditedSql(e.target.value)}
-                                    spellCheck={false}
-                                />
+                                <code className="text-white/80">{definition}</code>
                             )}
                         </div>
                     </div>

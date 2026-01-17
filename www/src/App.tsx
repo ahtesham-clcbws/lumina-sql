@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { invoke } from '@tauri-apps/api/core';
 import { BrowserRouter, Routes, Route, useParams, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import { useAppStore } from './stores/useAppStore';
@@ -11,11 +12,13 @@ import { Structure } from './features/structure/Structure';
 import { Designer } from './features/designer/Designer';
 import { Routines } from './features/routines/Routines';
 import { Export } from './features/export/Export';
+import { Import } from './features/import/Import';
 import { ViewTabs } from './features/common/ViewTabs';
 import { dbApi } from './api/db';
 import { Settings } from './features/settings/Settings';
 import { NotFound } from './features/common/NotFound';
 import { NotificationContainer } from './components/ui/NotificationContainer';
+import { OmniBar } from './features/search/OmniBar';
 
 const queryClient = new QueryClient();
 
@@ -82,6 +85,7 @@ function ServerContextLayout() {
                 {view === 'designer' && <Designer />}
                 {view === 'query' && <QueryEditor />}
                 {view === 'export' && <Export />}
+                {view === 'import' && <Import />}
                 {view === 'settings' && (
                     <div className="p-8 flex items-center justify-center h-full text-white/30">
                         Settings View Placeholder
@@ -196,10 +200,63 @@ function ThemeSync() {
     return null;
 }
 
+// Persistence Sync Component
+function PersistenceSync() {
+    const { 
+        theme, accentColor, density, fontFamily, dashboardViewMode, 
+        showSystemDbs, queryHistory, customFonts, customColors,
+        setPreferences 
+    } = useAppStore();
+
+    // 1. Load on Mount
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const prefs: any = await invoke('load_preferences');
+                if (prefs) {
+                    console.log('Loaded Preferences:', prefs);
+                    setPreferences(prefs);
+                }
+            } catch (e) {
+                console.error("Failed to load preferences:", e);
+            }
+        };
+        load();
+    }, []);
+
+    // 2. Save on Change (Debounced)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            const save = async () => {
+                const payload = {
+                    theme, accentColor, density, fontFamily, dashboardViewMode,
+                    showSystemDbs, 
+                    queryHistory: queryHistory.map(q => ({
+                        ...q,
+                        timestamp: q.timestamp.toISOString() // Backend expects String ISO
+                    }))
+                    // customFonts/Colors logic if we add to backend later
+                };
+                try {
+                   await invoke('save_preferences', { preferences: payload });
+                } catch (e) {
+                    console.error("Failed to save preferences:", e);
+                }
+            };
+            save();
+        }, 500); // 500ms debounce
+
+        return () => clearTimeout(timer);
+    }, [theme, accentColor, density, fontFamily, dashboardViewMode, showSystemDbs, queryHistory]);
+
+    return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
         <ThemeSync />
+        <PersistenceSync />
         <NotificationContainer />
         <BrowserRouter>
             <Settings /> 

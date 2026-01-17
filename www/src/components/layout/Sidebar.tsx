@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Database, Table, ChevronRight, ChevronDown, Search, Loader2 } from 'lucide-react';
+import { Database, Table, ChevronRight, ChevronDown, Search, Loader2, Code } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
 import { dbApi } from '@/api/db';
 import { cn } from '@/lib/utils';
@@ -22,6 +22,13 @@ export function Sidebar() {
     const { data: tables, isLoading: loadingTables } = useQuery({
         queryKey: ['tables', currentDb],
         queryFn: () => dbApi.getTables(currentDb!),
+        enabled: !!currentDb
+    });
+
+    // Fetch Routines (if DB selected)
+    const { data: routines, isLoading: loadingRoutines } = useQuery({
+        queryKey: ['routines', currentDb],
+        queryFn: () => dbApi.getRoutines(currentDb!),
         enabled: !!currentDb
     });
 
@@ -111,12 +118,45 @@ export function Sidebar() {
                                                     : "text-text-muted hover:bg-hover-bg hover:text-text-main"
                                             )}
                                             onClick={(e) => handleSelectTable(e, t.name)}
+                                            draggable
+                                            onDragStart={(e) => {
+                                                e.dataTransfer.setData('application/json', JSON.stringify({ db: db.name, table: t.name }));
+                                                e.dataTransfer.effectAllowed = 'copy';
+                                            }}
                                         >
                                             <Table className={cn("w-3 h-3 transition-opacity", currentTable === t.name ? "opacity-100" : "opacity-50")} />
                                             <span className="truncate">{t.name}</span>
                                         </div>
                                     ))}
                                     {tables?.length === 0 && <div className="pl-4 py-1 text-[10px] text-text-muted opacity-50 italic">No tables found</div>}
+
+                                    {/* Routines Section */}
+                                    <div className="mt-2 mb-1 px-2 flex items-center gap-2 opacity-50">
+                                        <Code size={10} className="text-primary" />
+                                        <span className="text-[10px] uppercase font-bold tracking-widest text-primary">Routines</span>
+                                    </div>
+                                    {loadingRoutines ? (
+                                        <div className="py-2 pl-4 text-xs text-text-muted opacity-70 flex items-center gap-2">
+                                            <Loader2 className="w-3 h-3 animate-spin" /> Loading...
+                                        </div>
+                                    ) : routines?.map(r => (
+                                        <div 
+                                            key={r.name}
+                                            className="flex items-center gap-2 px-2 py-1 rounded cursor-pointer select-none transition-colors text-[11px] font-mono text-text-muted hover:bg-white/5 hover:text-text-main"
+                                            onClick={() => {
+                                                navigate(`/server/${serverId}/${currentDb}`);
+                                                // We might want a specific route for routines later, but for now we go to DB root which has Routines tab
+                                                setView('structure'); // Or routines if we had a view in store
+                                            }}
+                                        >
+                                            <div className={cn(
+                                                "w-1 h-1 rounded-full",
+                                                r.routine_type === 'PROCEDURE' ? "bg-blue-400" : "bg-purple-400"
+                                            )} />
+                                            <span className="truncate">{r.name}</span>
+                                        </div>
+                                    ))}
+                                    {routines?.length === 0 && <div className="pl-4 py-1 text-[10px] text-text-muted opacity-50 italic">No routines found</div>}
                                 </div>
                             )}
                         </div>
