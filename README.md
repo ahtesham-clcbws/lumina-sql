@@ -1,24 +1,37 @@
-# LuminaSQL
+# OmniMIN 🚀
 
-> **The Native, Visual, AI-Ready Database Manager.**
+> **Omni**present **M**ongo-to-**I**ncremental-**N**ative Database Manager.
 
-LuminaSQL is a high-performance, native (Rust) database management tool with a modern React UI. Designed to be a lightweight, ultra-fast alternative to phpMyAdmin, TablePlus, and DBeaver.
+OmniMIN is a high-performance, visual database browser designed to be the modern successor to legacy tools like phpMyAdmin. Built for speed and intelligence, it bridges the gap between NoSQL and SQL.
 
-![UI Preview](preview.png)
+[ Download App ] [ View Docs ] [ AI Features ]
 
-## 💡 Why LuminaSQL?
+<p align="center">
+  <img src="preview.png" width="49%" />
+  <img src="preview-light.png" width="49%" />
+</p>
+
+---
+
+### Why OmniMIN?
+* **M**ongo Support: Native NoSQL exploration with full document visualization.
+* **I**ncremental: Efficiently manage SQL schemas and relational data updates.
+* **N**ative: Blazing fast performance with zero web-browser overhead.
+* **AI-Ready:** Natural language to SQL/MQL translation built-in.
+
+---
+
+## 💡 Key Features
 
 Traditional tools like **phpMyAdmin** require a heavy stack (Apache + PHP) just to manage a database. Electron-based apps often feel sluggish and consume varying amounts of RAM.
 
-**LuminaSQL** solves this by providing a **standalone, dependency-free** compiled application.
-*   🚫 **No Apache/PHP required**: Just run the executable.
-*   ⚡ **Instant Startup**: Native Rust backend (Tauri 2.0).
-*   🔒 **Secure**: Your credentials stay on your machine.
-*   🎨 **Visual Designer**: Built-in schema architect with advanced code generation.
+- **Native Architecture**: Built with Rust (Tauri) for maximum performance and low memory usage.
+- **Secure & Native**: Production builds disable browser-like behaviors (Context Menus, DevTools) for a true desktop app experience.
+- **Modern UI**: React 18 + TailwindCSS v4 + Framer Motion.
+- **Universal Support**: One tool for MySQL, MariaDB, and upcoming MongoDB/PostgreSQL support.
+- **Zero Config**: Just run the executable. Settings are saved locally.
 
 ## 🖥️ Supported Platforms
-
-We aim to support **every operating system** developers use. Our native architecture allows us to compile optimized binaries for:
 
 | Platform | Status |
 | :--- | :--- |
@@ -31,8 +44,6 @@ We aim to support **every operating system** developers use. Our native architec
 
 ## ✅ Feature Checklist & Roadmap
 
-Below is the comprehensive list of all features implemented and planned for LuminaSQL.
-
 ### Phase 1: Foundation (Rust + React)
 - [x] **Backend Architecture**: Implemented `mysql_async` based connection pooling.
 - [x] **Command Set**: `connect_db`, `get_databases`, `get_tables`, `execute_query`.
@@ -43,7 +54,8 @@ Below is the comprehensive list of all features implemented and planned for Lumi
 
 ### Phase 2: Multi-Server Dashboard
 - [x] **Storage**: Local secure config storage (Rust).
-- [x] **Management UI**: "Add Server" modal and connection switching.
+- [x] **Management UI**: Full "Add/Edit/Delete" server management.
+- [x] **Grid/List View**: Toggleable layout per user preference.
 - [x] **Stats Widget**: Live server status and uptime.
 
 ### Phase 3: Information-Dense UI
@@ -51,24 +63,6 @@ Below is the comprehensive list of all features implemented and planned for Lumi
 - [x] **Context Bar**: Breadcrumbs for SQL Browser.
 - [x] **Tabbed Navigation**: Separate views for Structure, SQL, Designer.
 - [x] **Sidebar Explorer**: Nested schema explorer with expand/collapse.
-- [x] **QBE**: Query by Example search flow.
-- [x] **Search**: 1:1 Parity with standard search forms.
-
-### Phase 4 & 5: Advanced Features
-- [x] **Structure View**: Metrics, Bulk Actions (Check/Repair/Analyze), Quick Create.
-- [x] **Global Search**: Search across entire database.
-- [x] **Usage Stats**: Server home statistics.
-- [x] **Database Operations**: Rename, Copy, Collation changes.
-- [x] **SQL Tab**: Query History, Formatter, and Resizable Editor.
-- [x] **Table Maintenance**: Check, Analyze, Repair, Optimize.
-
-### Phase 6: Deep Feature Parity
-- [x] **Relation View**: Foreign Key Manager.
-- [x] **User Management**: Privileges, Create/Drop User, Grant/Revoke.
-- [x] **Triggers & Events**: List, Create, Edit, Drop interface.
-- [ ] **Stored Procedures**: Editor and Executor.
-- [ ] **Variables & Charsets**: Server variable editor.
-- [ ] **Advisors**: Performance recommendations.
 
 ### Phase 8: Schema Designer (Visual Architect)
 - [x] **Drag & Drop**: React Flow based table design.
@@ -86,14 +80,8 @@ Below is the comprehensive list of all features implemented and planned for Lumi
   - [ ] `SQLite` (sqlx-sqlite)
   - [ ] `MSSQL` (tiberius)
   - [ ] `MariaDB` (mysql_async)
-  - [ ] `MongoDB` (NoSQL Adapter)
+  - [ ] `MongoDB` (Native Document Browser)
   - [ ] `Redis` (Key-Value Adapter)
-- [ ] **Frontend Modularization**: Abstract core views for swappable renderers.
-
-### Phase 11: Resilience & Persistence
-- [x] **Config Persistence**: `servers.json` in `app_config_dir`.
-- [ ] **Preferences Migration**: Move Theme/Sidebar settings to `preferences.json`.
-- [ ] **Session Recovery**: Restore tabs on restart.
 
 ---
 
@@ -107,7 +95,7 @@ Below is the comprehensive list of all features implemented and planned for Lumi
 
 We welcome contributions! This project is 100% Open Source.
 
-1.  Clone repo: `git clone https://github.com/yourusername/luminasql.git`
+1.  Clone repo: `git clone https://github.com/ahtesham-clcbws/OmniMIN.git`
 2.  Install DB deps: `npm install` (in `www/`)
 3.  Run Dev: `npm run tauri dev`
 

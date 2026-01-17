@@ -104,6 +104,19 @@ pub async fn get_grants(name: String, host: String, state: State<'_, AppState>) 
 }
 
 #[tauri::command]
+pub async fn change_password(name: String, host: String, password: String, state: State<'_, AppState>) -> Result<(), String> {
+    let pool = {
+        let pool_guard = state.pool.lock().unwrap();
+        pool_guard.as_ref().cloned().ok_or("Not connected")?
+    };
+    let mut conn = pool.get_conn().await.map_err(|e| e.to_string())?;
+    
+    // MySQL 5.7.6+ uses ALTER USER
+    let query = format!("ALTER USER '{}'@'{}' IDENTIFIED BY '{}'", name, host, password);
+    conn.query_drop(query).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn flush_privileges(state: State<'_, AppState>) -> Result<(), String> {
     let pool = {
         let pool_guard = state.pool.lock().unwrap();

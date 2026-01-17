@@ -5,6 +5,14 @@ use mysql_async::prelude::*;
 use serde::Serialize;
 
 #[derive(Serialize)]
+pub struct BrowseResultRaw {
+    pub columns: Vec<String>,
+    pub rows: Vec<Vec<serde_json::Value>>,
+    pub total_rows: u64,
+    pub primary_key: Option<String>,
+}
+
+#[derive(Serialize)]
 pub struct TableInfo {
     pub name: String,
     pub rows: u64,
@@ -280,8 +288,18 @@ pub async fn browse_table_html(db: String, table: String, page: u32, limit: u32,
     let count: Option<u64> = conn.query_first(count_sql).await.map_err(|e| e.to_string())?;
     let total_rows = count.unwrap_or(0);
 
-    // 2. Get Data
-    let sql = format!("SELECT * FROM `{}`.`{}` LIMIT {} OFFSET {}", db, table, limit, offset);
+    // 2. Get Primary Key
+    let pk_query = format!("SHOW KEYS FROM `{}`.`{}` WHERE Key_name = 'PRIMARY'", db, table);
+    let pk_row: Option<mysql_async::Row> = conn.query_first(pk_query).await.map_err(|e| e.to_string())?;
+    let order_by = if let Some(row) = pk_row {
+        let col_name: String = row.get("Column_name").unwrap_or_default();
+        format!("ORDER BY `{}` ASC", col_name)
+    } else {
+        "".to_string()
+    };
+
+    // 3. Get Data
+    let sql = format!("SELECT * FROM `{}`.`{}` {} LIMIT {} OFFSET {}", db, table, order_by, limit, offset);
     let mut result = conn.query_iter(sql).await.map_err(|e| e.to_string())?;
     
     let mut columns = Vec::new();
@@ -316,6 +334,100 @@ pub async fn browse_table_html(db: String, table: String, page: u32, limit: u32,
         total_rows,
         query_time: duration,
     })
+}
+
+#[tauri::command]
+pub async fn browse_table(db: String, table: String, page: u32, limit: u32, state: State<'_, AppState>) -> Result<BrowseResultRaw, String> {
+    let offset = (page - 1) * limit;
+    
+    let pool = {
+        let pool_guard = state.pool.lock().unwrap();
+        pool_guard.as_ref().cloned().ok_or("Not connected")?
+    };
+    let mut conn = pool.get_conn().await.map_err(|e| e.to_string())?;
+    
+    // 1. Get Count
+    let count_sql = format!("SELECT count(*) FROM `{}`.`{}`", db, table);
+    let count: Option<u64> = conn.query_first(count_sql).await.map_err(|e| e.to_string())?;
+    let total_rows = count.unwrap_or(0);
+
+    // 2. Get Primary Key for sorting
+    let pk_query = format!("SHOW KEYS FROM `{}`.`{}` WHERE Key_name = 'PRIMARY'", db, table);
+    let pk_row: Option<mysql_async::Row> = conn.query_first(pk_query).await.map_err(|e| e.to_string())?;
+    
+    let pk_col = pk_row.map(|row| row.get::<String, _>("Column_name").unwrap_or_default());
+    
+    let order_by = if let Some(ref col_name) = pk_col {
+        format!("ORDER BY `{}` ASC", col_name)
+    } else {
+        "".to_string()
+    };
+
+    // 3. Get Data
+    let sql = format!("SELECT * FROM `{}`.`{}` {} LIMIT {} OFFSET {}", db, table, order_by, limit, offset);
+    let mut result = conn.query_iter(sql).await.map_err(|e| e.to_string())?;
+    
+    let mut columns = Vec::new();
+    if let Some(col_slice) = result.columns() {
+        for col in col_slice.iter() {
+            columns.push(col.name_str().into_owned());
+        }
+    }
+
+    let rows_data: Vec<mysql_async::Row> = result.collect().await.map_err(|e| e.to_string())?;
+    let mut rows = Vec::new();
+
+    for row in rows_data {
+        let mut row_values = Vec::new();
+        for i in 0..columns.len() {
+            let val: mysql_async::Value = row.get(i).unwrap_or(mysql_async::Value::NULL);
+            row_values.push(mysql_to_json(val));
+        }
+        rows.push(row_values);
+    }
+    
+    Ok(BrowseResultRaw {
+        columns,
+        rows,
+        total_rows,
+        primary_key: pk_col,
+    })
+}
+
+#[tauri::command]
+pub async fn update_cell(
+    db: String, 
+    table: String, 
+    column: String, 
+    value: serde_json::Value, 
+    primary_key_col: String,
+    primary_key_val: serde_json::Value,
+    state: State<'_, AppState>
+) -> Result<(), String> {
+    let pool = {
+        let pool_guard = state.pool.lock().unwrap();
+        pool_guard.as_ref().cloned().ok_or("Not connected")?
+    };
+    let mut conn = pool.get_conn().await.map_err(|e| e.to_string())?;
+
+    // Determine value representation (escape if string)
+    let val_str = match value {
+        serde_json::Value::String(s) => format!("'{}'", s.replace("'", "''")),
+        serde_json::Value::Null => "NULL".to_string(),
+        _ => value.to_string(),
+    };
+
+    let pk_val_str = match primary_key_val {
+        serde_json::Value::String(s) => format!("'{}'", s.replace("'", "''")),
+        _ => primary_key_val.to_string(),
+    };
+
+    let sql = format!(
+        "UPDATE `{}`.`{}` SET `{}` = {} WHERE `{}` = {}", 
+        db, table, column, val_str, primary_key_col, pk_val_str
+    );
+
+    conn.query_drop(sql).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]

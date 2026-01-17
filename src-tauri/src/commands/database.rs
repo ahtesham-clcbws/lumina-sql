@@ -21,7 +21,7 @@ pub async fn get_databases(state: State<'_, AppState>) -> Result<Vec<DatabaseInf
     let sql = "
         SELECT 
             s.SCHEMA_NAME AS name,
-            SUM(COALESCE(t.data_length + t.index_length, 0)) AS total_size,
+            SUM(t.DATA_LENGTH + t.INDEX_LENGTH) AS total_size,
             COUNT(t.TABLE_NAME) AS tables_count
         FROM information_schema.SCHEMATA s
         LEFT JOIN information_schema.TABLES t ON s.SCHEMA_NAME = t.TABLE_SCHEMA

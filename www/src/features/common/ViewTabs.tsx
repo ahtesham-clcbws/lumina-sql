@@ -18,16 +18,16 @@ export function ViewTabs() {
     ] as const;
 
     return (
-        <div className="flex items-center gap-1 border-b border-white/5 bg-[#0f172a] px-4 pt-4">
+        <div className="flex items-center gap-1 border-b border-border bg-canvas px-4 pt-4">
             {tabs.map(tab => (
                 <button
                     key={tab.id}
                     onClick={() => setView(tab.id)}
                     className={cn(
-                        "flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors border-b-2",
-                        view === tab.id 
-                            ? "bg-white/5 text-blue-400 border-blue-400" 
-                            : "text-white/50 border-transparent hover:text-white hover:bg-white/5"
+                        "tab-btn",
+                        view === tab.id
+                        ? "bg-white/5 text-primary border-primary"
+                        : "border-transparent hover:text-text-main"
                     )}
                 >
                     <tab.icon size={16} />

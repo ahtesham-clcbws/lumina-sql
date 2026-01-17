@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "luminasql",
+  "productName": "OmniMIN",
   "version": "0.1.0",
-  "identifier": "com.luminasql.app",
+  "identifier": "com.omnimin.app",
   "build": {
     "frontendDist": "../dist",
     "beforeDevCommand": "npm run dev",
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "LuminaSQL",
+        "title": "OmniMIN",
         "width": 1200,
         "height": 800,
         "resizable": true,

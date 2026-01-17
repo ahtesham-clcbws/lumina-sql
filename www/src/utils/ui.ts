@@ -1,8 +1,6 @@
-// Minimal UI Utils 
-export function showToast(message: string, type: 'success' | 'error' | 'warning' = 'success') {
-    // Placeholder replacement for legacy showToast
-    // In a real app we'd use Sonner or React Hot Toast
+import { useNotificationStore, NotificationType } from '@/stores/useNotificationStore';
+
+export function showToast(message: string, type: NotificationType = 'success') {
+    useNotificationStore.getState().show(message, type);
     console.log(`[Toast ${type}] ${message}`);
-    // Fallback native alert for critical errors
-    if (type === 'error') alert(message);
 }

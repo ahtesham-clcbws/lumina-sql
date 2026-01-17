@@ -72,25 +72,112 @@ pub async fn delete_server(id: String, app_handle: AppHandle) -> Result<(), Stri
 }
 
 #[tauri::command]
-pub async fn get_server_info(state: State<'_, AppState>) -> Result<ServerInfo, String> {
+pub async fn get_server_info(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     let pool = {
-        let pool_guard = state.pool.lock().unwrap();
-        pool_guard.as_ref().cloned().ok_or("Not connected")?
+        let guard = state.pool.lock().unwrap();
+        guard.as_ref().cloned().ok_or("Not connected")?
     };
+    
     let mut conn = pool.get_conn().await.map_err(|e| e.to_string())?;
     
+    // Get version
     let version: Option<String> = conn.query_first("SELECT VERSION()").await.map_err(|e| e.to_string())?;
-    let user: Option<String> = conn.query_first("SELECT USER()").await.map_err(|e| e.to_string())?;
     
-    // Fix: SHOW STATUS returns (Variable_name, Value), so we must map to a tuple, not a single String
-    let ssl_row: Option<(String, String)> = conn.query_first("SHOW STATUS LIKE 'Ssl_cipher'").await.map_err(|e| e.to_string())?;
-    let ssl_cipher = ssl_row.map(|(_, val)| val);
+    // Get uptime
+    let uptime: Option<String> = conn.query_first("SELECT VARIABLE_VALUE FROM information_schema.GLOBAL_STATUS WHERE VARIABLE_NAME = 'UPTIME'").await.map_err(|e| e.to_string())?;
     
-    Ok(ServerInfo {
-        version: version.unwrap_or_default(),
-        user: user.unwrap_or_default(),
-        ssl: ssl_cipher.is_some() && !ssl_cipher.unwrap().is_empty(),
-    })
+    // Get User
+    let user: Option<String> = conn.query_first("SELECT CURRENT_USER()").await.map_err(|e| e.to_string())?;
+    
+    Ok(vec![
+        version.unwrap_or_default(),
+        uptime.unwrap_or_default(),
+        user.unwrap_or_default()
+    ])
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct SavedServer {
+    pub id: String,
+    pub name: String,
+    pub host: String,
+    pub port: u16,
+    pub user: String,
+    pub pass: Option<String>,
+    pub ssl: Option<bool>,
+    pub ssh_enabled: Option<bool>,
+    pub ssh_host: Option<String>,
+    pub ssh_port: Option<u16>,
+    pub ssh_user: Option<String>,
+    pub ssh_pass: Option<String>,
+    pub auto_connect: Option<bool>,
+}
+
+#[tauri::command]
+pub fn get_saved_servers_local(app_handle: tauri::AppHandle) -> Result<Vec<SavedServer>, String> {
+    use std::fs;
+    let config_dir = app_handle.path().app_config_dir().map_err(|e| e.to_string())?;
+    let servers_path = config_dir.join("servers.json");
+    
+    if !servers_path.exists() {
+        return Ok(vec![]);
+    }
+    
+    let content = fs::read_to_string(servers_path).map_err(|e| e.to_string())?;
+    let servers: Vec<SavedServer> = serde_json::from_str(&content).unwrap_or_default();
+    
+    Ok(servers)
+}
+
+#[tauri::command]
+pub fn save_server_local(app_handle: tauri::AppHandle, server: SavedServer) -> Result<Vec<SavedServer>, String> {
+    use std::fs;
+    let config_dir = app_handle.path().app_config_dir().map_err(|e| e.to_string())?;
+    if !config_dir.exists() {
+        fs::create_dir_all(&config_dir).map_err(|e| e.to_string())?;
+    }
+    
+    let servers_path = config_dir.join("servers.json");
+    
+    let mut servers: Vec<SavedServer> = if servers_path.exists() {
+        let content = fs::read_to_string(&servers_path).map_err(|e| e.to_string())?;
+        serde_json::from_str(&content).unwrap_or_default()
+    } else {
+        vec![]
+    };
+    
+    // Update or Add
+    if let Some(idx) = servers.iter().position(|s| s.id == server.id) {
+        servers[idx] = server;
+    } else {
+        servers.push(server);
+    }
+    
+    let json = serde_json::to_string_pretty(&servers).map_err(|e| e.to_string())?;
+    fs::write(servers_path, json).map_err(|e| e.to_string())?;
+    
+    Ok(servers)
+}
+
+#[tauri::command]
+pub fn delete_server_local(app_handle: tauri::AppHandle, id: String) -> Result<Vec<SavedServer>, String> {
+    use std::fs;
+    let config_dir = app_handle.path().app_config_dir().map_err(|e| e.to_string())?;
+    let servers_path = config_dir.join("servers.json");
+    
+    if !servers_path.exists() {
+        return Ok(vec![]);
+    }
+    
+    let content = fs::read_to_string(&servers_path).map_err(|e| e.to_string())?;
+    let mut servers: Vec<SavedServer> = serde_json::from_str(&content).unwrap_or_default();
+    
+    servers.retain(|s| s.id != id);
+    
+    let json = serde_json::to_string_pretty(&servers).map_err(|e| e.to_string())?;
+    fs::write(servers_path, json).map_err(|e| e.to_string())?;
+    
+    Ok(servers)
 }
 
 #[tauri::command]
@@ -131,6 +218,32 @@ pub async fn get_status_variables(filter: Option<String>, state: State<'_, AppSt
         format!("SHOW GLOBAL STATUS LIKE '%{}%'", f.replace("'", ""))
     } else {
         "SHOW GLOBAL STATUS".to_string()
+    };
+    
+    let rows: Vec<mysql_async::Row> = conn.query(query).await.map_err(|e| e.to_string())?;
+    
+    let vars = rows.into_iter().map(|r| {
+        StatusVar {
+            variable_name: r.get(0).unwrap_or_default(),
+            value: r.get(1).unwrap_or_default(),
+        }
+    }).collect();
+    
+    Ok(vars)
+}
+
+#[tauri::command]
+pub async fn get_server_variables(filter: Option<String>, state: State<'_, AppState>) -> Result<Vec<StatusVar>, String> {
+    let pool = {
+        let pool_guard = state.pool.lock().unwrap();
+        pool_guard.as_ref().cloned().ok_or("Not connected")?
+    };
+    let mut conn = pool.get_conn().await.map_err(|e| e.to_string())?;
+    
+    let query = if let Some(f) = filter {
+        format!("SHOW VARIABLES LIKE '%{}%'", f.replace("'", ""))
+    } else {
+        "SHOW VARIABLES".to_string()
     };
     
     let rows: Vec<mysql_async::Row> = conn.query(query).await.map_err(|e| e.to_string())?;

@@ -1,12 +1,35 @@
 @import "tailwindcss";
 
 @theme {
-  --color-accent: #3b82f6; 
-  --color-accent-glow: rgba(59, 130, 246, 0.4);
+  /* Semantic Colors - Mapped to Dynamic Variables */
+  --color-primary: var(--accent);
+  --color-primary-glow: var(--accent-glow);
+  
+  --color-error: #ef4444;
+  --color-error-hover: #dc2626;
+  
+  --color-success: #10b981;
+  --color-success-hover: #059669;
+
+  --color-warning: #f59e0b;
+  
+  /* Layout Colors */
+  --color-main: var(--bg-main);
+  --color-surface: var(--bg-surface);
+  --color-canvas: var(--bg-canvas);
+  --color-border: var(--border-color);
+  
+  /* Text Colors */
+  --color-text-main: var(--text-main);
+  --color-text-muted: var(--text-muted);
+
+  /* Retain compat aliases */
+  --color-accent: var(--accent);
+  --color-accent-glow: var(--accent-glow);
 }
 
 :root {
-    /* Default Dark Mode Fallback (overridden by JS) */
+    /* Default Dark Mode Fallback */
     --bg-main: #0f172a;
     --bg-secondary: #1e293b;
     --text-main: #f1f5f9;
@@ -14,10 +37,9 @@
     --border-color: rgba(255,255,255,0.1);
     --hover-bg: rgba(255,255,255,0.05);
     
-    --accent: #3b82f6; 
     --danger: #ef4444;
     
-    /* Spacing Defaults (Comfortable) - overridden by JS Density */
+    /* Spacing Defaults */
     --spacing-xs: 4px;
     --spacing-sm: 8px;
     --spacing-md: 12px;
@@ -30,7 +52,7 @@
     --font-main: 'Inter', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
     
-    --glass-bg: #1e293b; /* Fallback flat color */
+    --glass-bg: #1e293b; 
     --glass-border: var(--border-color);
     
     --toolbar-bg: rgba(0,0,0,0.2);
@@ -41,18 +63,70 @@
     --border-dim: rgba(255,255,255,0.1);
 }
 
+/* Accent Presets */
+:root[data-accent='blue'] {
+    --accent: #3b82f6; 
+    --accent-glow: rgba(59, 130, 246, 0.4);
+}
+
+:root[data-accent='purple'] {
+    --accent: #8b5cf6; 
+    --accent-glow: rgba(139, 92, 246, 0.4);
+}
+
+:root[data-accent='green'] {
+    --accent: #10b981; 
+    --accent-glow: rgba(16, 185, 129, 0.4);
+}
+
+:root[data-accent='orange'] {
+    --accent: #f97316; 
+    --accent-glow: rgba(249, 115, 22, 0.4);
+}
+
+:root[data-accent='red'] {
+    --accent: #ef4444; 
+    --accent-glow: rgba(239, 68, 68, 0.4);
+}
+
+/* Default Fallback */
+:root:not([data-accent]) {
+    --accent: #3b82f6; 
+    --accent-glow: rgba(59, 130, 246, 0.4);
+}
+
 .light-mode {
-    --bg-main: #f8fafc;
+    /* Soft Light / Paper */
+    --bg-main: #f0f4f8; 
     --bg-secondary: #ffffff;
-    --bg-canvas: #f8fafc;
+    --bg-canvas: #f0f4f8;
     --bg-surface: #ffffff;
-    --text-main: #0f172a;
-    --text-muted: #64748b;
-    --border-color: #e2e8f0;
+    --text-main: #0f172a; /* Slate 900 - Sharp Black */
+    --text-muted: #64748b; /* Slate 500 */
+    --border-color: #cbd5e1; /* Slate 300 - Visible border */
     --border-dim: #e2e8f0;
     --hover-bg: rgba(0,0,0,0.05);
-    --toolbar-bg: rgba(0,0,0,0.03);
-    --toolbar-border: rgba(0,0,0,0.1);
+    --toolbar-bg: #e2e8f0;
+    --toolbar-border: #cbd5e1;
+    
+    /* Shadow for depth in light mode */
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+}
+
+.ultra-light-mode {
+    /* Ultra Bright (High Contrast) */
+    --bg-main: #ffffff;
+    --bg-secondary: #f8fafc; /* Slate-50 */
+    --bg-canvas: #ffffff;
+    --bg-surface: #f8fafc;
+    --text-main: #0f172a; /* Slate-900 (Stark) */
+    --text-muted: #475569;
+    --border-color: #e2e8f0;
+    --border-dim: #e2e8f0;
+    --hover-bg: rgba(0,0,0,0.03);
+    --toolbar-bg: #f1f5f9;
+    --toolbar-border: #e2e8f0;
 }
 
 /* Base Reset Removed - Handled by Tailwind Preflight */
@@ -119,7 +193,6 @@ body {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: var(--text-muted);
     background: transparent;
     border: none;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -138,21 +211,18 @@ body {
     color: var(--text-main);
 }
 
-.nav-item.active {
-    color: #4489f4; 
-    background: rgba(68, 137, 244, 0.1);
-}
-
 .nav-item.active::after {
     content: '';
     position: absolute;
-    right: -14px;
-    top: 10px;
-    bottom: 10px;
+    right: -1px;
+    top: 50%;
+    transform: translateY(-50%);
     width: 3px;
-    background: #4489f4;
-    border-radius: 4px;
-    box-shadow: 0 0 10px rgba(68, 137, 244, 0.5);
+    height: 20px;
+    background: var(--color-primary);
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 0 10px var(--color-primary-glow);
 }
 
 .status-marker {
@@ -195,7 +265,7 @@ body {
 
 @layer components {
     .btn-primary {
-        @apply bg-[#2f81f7] text-white border-none py-2.5 px-5 rounded-lg font-semibold text-sm cursor-pointer flex items-center gap-1.5 transition-[filter] w-max hover:brightness-110 inline-flex;
+        @apply bg-[#2f81f7] text-white border-none py-2.5 px-5 rounded-lg font-semibold text-sm cursor-pointer items-center gap-1.5 transition-[filter] w-max hover:brightness-110 inline-flex;
     }
 
     .btn-secondary {
@@ -363,7 +433,7 @@ body {
 
 @layer components {
     .glass-panel {
-        @apply rounded-xl bg-white/5 border border-white/10;
+        @apply rounded-lg bg-white/5 border border-white/10;
     }
 
     .nav-item {
@@ -371,12 +441,12 @@ body {
     }
 
     .nav-item.active {
-        @apply text-[#4489f4] bg-[#4489f4]/10;
+        @apply text-primary bg-primary/10;
     }
     
     .nav-item.active::after {
         content: '';
-        @apply absolute -right-[14px] top-2.5 bottom-2.5 w-[3px] bg-[#4489f4] rounded shadow-[0_0_10px_rgba(68,137,244,0.5)];
+        @apply absolute -right-[14px] top-2.5 bottom-2.5 w-[3px] bg-primary rounded shadow-[0_0_10px_var(--color-primary-glow)];
     }
     
     .nav-item svg { 
@@ -551,7 +621,28 @@ body {
 }
 .view-container.flex { display: flex; } /* Override display none */
 
-/* Server Cards removed - use Tailwind Grid */
+/* Dashboard Grid */
+#server-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--spacing-lg);
+    padding-top: var(--spacing-lg);
+}
+
+.server-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: var(--spacing-lg);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+.server-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
 
 /* Data Table Wrapper removed - use Tailwind */
 
@@ -782,32 +873,22 @@ body {
     input:focus, select:focus {
         @apply ring-2 ring-blue-500/20;
     }
-}
 
-/* Buttons */
-button {
-    padding: 8px 16px;
-    border-radius: 4px;
-    font-size: var(--font-size-base);
-    font-weight: 500;
-    cursor: pointer;
-    border: 1px solid var(--border-color);
-    background-color: var(--bg-secondary);
-    color: var(--text-main);
-}
+    button {
+        @apply px-4 py-2 rounded font-medium cursor-pointer border border-border bg-secondary text-text-main transition-all;
+    }
 
-button:hover {
-    background-color: var(--hover-bg);
-    border-color: var(--text-muted);
-}
+    button:hover {
+        @apply bg-hover-bg border-text-muted;
+    }
 
-button.primary {
-    background-color: var(--accent);
-    color: white; /* Always white text on accent for contrast? Maybe black if accent light. */
-    border: none;
-}
-button.primary:hover {
-    opacity: 0.9;
+    button.primary {
+        @apply bg-accent text-white border-none;
+    }
+    
+    button.primary:hover {
+        @apply opacity-90;
+    }
 }
 
 /* Tabs */
@@ -862,6 +943,37 @@ button.primary:hover {
     transform: translateY(-1px);
 }
 
+@layer components {
+    .glass-panel {
+        @apply rounded-lg bg-white/5 border border-white/10;
+        background: var(--bg-surface);
+        backdrop-filter: blur(12px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    .dark .glass-panel {
+        background: rgba(20, 20, 30, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: none;
+    }
+}
+
+/* Input Styles */
+.input {
+    width: 100%;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    outline: none;
+    transition: all 0.2s;
+    color: var(--text-main);
+}
+
+.input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 1px var(--color-primary);
+}
 .dropdown-select {
     background: var(--bg-secondary);
     border: 1px solid var(--glass-border);

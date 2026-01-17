@@ -21,6 +21,7 @@ pub fn run() {
             commands::server::get_server_info,
             commands::server::get_process_list,
             commands::server::get_status_variables,
+            commands::server::get_server_variables,
 
             // Database
             commands::database::get_databases, 
@@ -36,6 +37,8 @@ pub fn run() {
             commands::table::get_tables,
             commands::table::get_tables_html,
             commands::table::browse_table_html,
+            commands::table::browse_table,
+            commands::table::update_cell,
             commands::table::get_columns,
             commands::table::get_table_count,
             commands::table::rename_table,
@@ -45,6 +48,9 @@ pub fn run() {
             commands::table::global_search,
 
             // Query
+            commands::server::get_saved_servers_local,
+            commands::server::save_server_local,
+            commands::server::delete_server_local,
             commands::query::execute_query,
             commands::query::execute_query_html,
 
@@ -68,8 +74,7 @@ pub fn run() {
             commands::users::create_user,
             commands::users::drop_user,
             commands::users::get_grants,
-            commands::users::drop_user,
-            commands::users::get_grants,
+            commands::users::change_password,
             commands::users::flush_privileges,
             
             // Triggers & Events
@@ -78,7 +83,12 @@ pub fn run() {
             commands::triggers::drop_trigger,
             commands::triggers::get_events,
             commands::triggers::create_event,
-            commands::triggers::drop_event
+            commands::triggers::drop_event,
+            
+            // Routines
+            commands::routines::get_routines,
+            commands::routines::get_routine_definition,
+            commands::routines::drop_routine
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -13,7 +13,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["www/src/*"]
-    }
+    },
+    "types": ["vite/client"]
   },
   "include": ["www/**/*.ts", "www/**/*.tsx"],
   "exclude": ["node_modules"]

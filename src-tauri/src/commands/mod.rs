@@ -8,3 +8,4 @@ pub mod common;
 pub mod indexes;
 pub mod users;
 pub mod triggers;
+pub mod routines;
